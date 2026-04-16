@@ -50,14 +50,15 @@ module RISCV_MMC(
     wire        decoder_mem_to_reg;
     wire        decoder_mem_write;
     wire [3:0]  decoder_alu_control;
-    wire        decoder_alu_src_b;
+    wire [1:0]  decoder_alu_src_a;
+    wire [1:0]  decoder_alu_src_b;
     wire [2:0]  decoder_imm_src;
     wire        decoder_reg_write;
 
     // ALU signals
     // Inputs
-    wire [31:0] alu_src_a;
-    wire [31:0] alu_src_b;
+    logic [31:0] alu_src_a;
+    logic [31:0] alu_src_b;
     wire [3:0]  alu_control;
     // Outputs
     // wire [31:0] alu_result;
@@ -85,11 +86,13 @@ module RISCV_MMC(
 
     // Program Counter signals
     // Inputs
-    wire        pc_clk;
-    wire        pc_rst;
-    wire [31:0] pc_in;
+    wire            pc_clk;
+    wire            pc_rst;
+    wire [31:0]     pc_src_a;
+    wire [31:0]     pc_src_b;
+    wire [31:0]     pc_in;
     // Outputs
-    wire [31:0] pc;
+    wire [31:0]     pc;
 
     // Signal assignments
     // Module output signals
@@ -106,8 +109,32 @@ module RISCV_MMC(
     assign decoder_instr = instr;
 
     // ALU signals
-    assign alu_src_a = reg_file_RD1;
-    assign alu_src_b = (decoder_alu_src_b) ? extend_ext_imm : reg_file_RD2;
+    always_comb
+    begin: aluSrcALogic
+        if (decoder_alu_src_a[0])
+        begin
+            if (decoder_alu_src_a[1])
+                alu_src_a = pc;
+            else
+                alu_src_a = '0
+        end
+        else
+            alu_src_a = reg_file_RD1;
+    end
+
+    always_comb
+    begin: aluSrcBLogic
+        if (decoder_alu_src_b[0])
+        begin
+            if (decoder_alu_src_b[1])
+                alu_src_b = extend_ext_imm;
+            else
+                alu_src_b = 32'h4;
+        end
+        else
+            alu_src_b = reg_file_RD2;
+    end
+
     assign alu_control = decoder_alu_control;
 
     // Register File signals
@@ -126,7 +153,9 @@ module RISCV_MMC(
     // Program Counter signals
     assign pc_clk = clk;
     assign pc_rst = rst;
-    assign pc_in = pc + (pc_logic_PC_src[0] ? extend_ext_imm : 4);
+    assign pc_src_a = decoder_PCS[0] ? extend_ext_imm : 32'h4;
+    assign pc_src_b = decoder_PCS[1] ? reg_file_RD1 : pc;
+    assign pc_in = pc_src_a + pc_src_b;
 
 	// Instantiate your extender module here
     Extend extender (
@@ -141,6 +170,7 @@ module RISCV_MMC(
         .mem_to_reg(decoder_mem_to_reg),
         .mem_write(decoder_mem_write),
         .alu_control(decoder_alu_control),
+        .alu_src_a(decoder_alu_src_a),
         .alu_src_b(decoder_alu_src_b),
         .imm_src(decoder_imm_src),
         .reg_write(decoder_reg_write)

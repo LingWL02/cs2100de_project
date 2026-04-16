@@ -26,7 +26,8 @@ module Decoder(
     output reg          mem_to_reg,
     output reg          mem_write,
     output reg  [3:0]   alu_control,
-    output reg          alu_src_b,
+    output reg  [1:0]   alu_src_a,
+    output reg  [1:0]   alu_src_b,
     output reg  [2:0]   imm_src,
     output reg          reg_write
     );
@@ -54,7 +55,8 @@ module Decoder(
         mem_to_reg  = 1'b0;
         mem_write   = 1'b0;
         alu_control = 4'b0;
-        alu_src_b   = 1'b0;
+        alu_src_a   = 2'b00;
+        alu_src_b   = 2'b00;
         imm_src     = 3'b0;
         reg_write   = 1'b0;
 
@@ -65,7 +67,8 @@ module Decoder(
                 mem_to_reg  = 1'b0;
                 mem_write   = 1'b0;
                 alu_control = {funct7[5], funct3};
-                alu_src_b   = 1'b0;
+                alu_src_a   = 2'b00;
+                alu_src_b   = 2'b00;
                 reg_write   = 1'b1;
             end
             OP_I:
@@ -74,7 +77,8 @@ module Decoder(
                 mem_to_reg  = 1'b0;
                 mem_write   = 1'b0;
                 alu_control = {((funct3 == 3'h5) ? funct7[5] : 1'b0), funct3};
-                alu_src_b   = 1'b1;
+                alu_src_a   = 2'b00;
+                alu_src_b   = 2'b11;
                 imm_src     = 3'b011;
                 reg_write   = 1'b1;
             end
@@ -84,7 +88,8 @@ module Decoder(
                 mem_to_reg  = 1'b1;
                 mem_write   = 1'b0;
                 alu_control = 4'b0;
-                alu_src_b   = 1'b1;
+                alu_src_a   = 2'b00;
+                alu_src_b   = 2'b11;
                 imm_src     = 3'b011;
                 reg_write   = 1'b1;
             end
@@ -93,7 +98,8 @@ module Decoder(
                 PCS         = 2'b00;
                 mem_write   = 1'b1;
                 alu_control = 4'b0;
-                alu_src_b   = 1'b1;
+                alu_src_a   = 2'b00;
+                alu_src_b   = 2'b11;
                 imm_src     = 3'b110;
                 reg_write   = 1'b0;
             end
@@ -102,16 +108,54 @@ module Decoder(
                 PCS         = 2'b01;
                 mem_write   = 1'b0;
                 alu_control = 4'b0001;
-                alu_src_b   = 1'b0;
+                alu_src_a   = 2'b00;
+                alu_src_b   = 2'b00;
                 imm_src     = 3'b111;
                 reg_write   = 1'b0;
             end
             OP_JAL:
             begin
                 PCS         = 2'b10;
+                mem_to_reg  = 1'b0;
                 mem_write   = 1'b0;
+                alu_control = 4'b0000;
+                alu_src_a   = 2'b11;
+                alu_src_b   = 2'b01;  // PC + 4
                 imm_src     = 3'b010;
-                reg_write   = 1'b0;
+                reg_write   = 1'b1;
+            end
+            OP_AUIPC:
+            begin
+                PCS         = 2'b00;
+                mem_to_reg  = 1'b0;
+                reg_write   = 1'b1;
+                mem_write   = 1'b0;
+                alu_src_a   = 2'b11;
+                alu_src_b   = 2'b11;
+                imm_src     = 3'b000;
+                alu_control = 4'b0000;
+            end
+            OP_LUI:
+            begin
+                PCS         = 2'b00;
+                mem_to_reg  = 1'b0;
+                reg_write   = 1'b1;
+                mem_write   = 1'b0;
+                alu_src_a   = 2'b01;
+                alu_src_b   = 2'b11;
+                imm_src     = 3'b000;
+                alu_control = 4'b0000;
+            end
+            OP_JALR:
+            begin
+                PCS         = 2'b11;
+                mem_to_reg  = 1'b0;
+                mem_write   = 1'b0;
+                alu_control = 4'b0000;
+                alu_src_a   = 2'b11;
+                alu_src_b   = 2'b01;
+                imm_src     = 3'b011;
+                reg_write   = 1'b1;
             end
         endcase
     end
