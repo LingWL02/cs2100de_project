@@ -36,8 +36,9 @@ module Top_Test(
     logic [15:0] led;
     logic [6:0] seg;
     logic [7:0] an;
+    logic dp;
 
-    Top_MMC dut (
+    Top_MMC_demo dut (
         .clk(clk),
         .btnCpuReset(btnCpuReset),
         .btnC(btnC),
@@ -48,7 +49,8 @@ module Top_Test(
         .sw(sw),
         .led(led),
         .seg(seg),
-        .an(an)
+        .an(an),
+        .dp(dp)
     );
 
     initial begin

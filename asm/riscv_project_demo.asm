@@ -20,7 +20,6 @@ main:
     # MMIO base pointers
     lui s0, 0x2              # s0 = 0x00002000
     addi s0, s0, 1024        # s0 = 0x00002400
-    add sp, s0, zero         # initialize stack pointer near top of DRAM/MMIO boundary
     addi s1, s0, LED_OFF     # LEDS
     addi s2, s0, DIP_OFF     # DIPS
     addi s3, s0, PB_OFF      # PBS
@@ -30,10 +29,6 @@ main:
 
     # s7: software cycle counter
     addi s7, zero, 0
-
-    # s11: per-frame delay for ASCII animations
-    la t0, DELAY_MSG_FRAME
-    lw s11, 0(t0)
 
     # s8: base address of the 5 target values
     la s8, TARGET_VALUES
@@ -45,20 +40,18 @@ main:
     sw zero, 0(s6)
 
     # idle splash: "WELC"
-    la a0, MSG_WELC
-    add a1, s11, zero
+    la a0, MSG_WELC_DW0
+    la a1, MSG_WELC_DW1
+    jal ra, display_ascii_words
     la t0, DELAY_WELC
-    lw a2, 0(t0)
-    jal ra, display_ascii_ltr
+    lw a0, 0(t0)
+    jal ra, delay_ticks
 
 idle_wait_btnc:
-    # idle prompt: "PSH BTNC" (animate once, then hold static while waiting)
-    la a0, MSG_PSHC
-    add a1, s11, zero
-    addi a2, zero, 0
-    jal ra, display_ascii_ltr
-    la a0, MSG_PSHC
-    jal ra, display_ascii_static_z
+    # idle prompt: "PSH BTNC"
+    la a0, MSG_PSHC_DW0
+    la a1, MSG_PSHC_DW1
+    jal ra, display_ascii_words
 
 wait_btnc_press:
     lw t1, 0(s2)             # mirror switches to LEDs in idle
@@ -74,12 +67,16 @@ wait_btnc_release:
     andi t3, t2, 16
     bne t3, zero, wait_btnc_release
 
+    # start a new round: reset cycle counter
+    addi s7, zero, 0
+
     # show "START"
-    la a0, MSG_START
-    add a1, s11, zero
+    la a0, MSG_START_DW0
+    la a1, MSG_START_DW1
+    jal ra, display_ascii_words
     la t0, DELAY_START
-    lw a2, 0(t0)
-    jal ra, display_ascii_ltr
+    lw a0, 0(t0)
+    jal ra, delay_ticks
 
     # game index = 0
     addi s9, zero, 0
@@ -113,24 +110,16 @@ wait_btnr_submit:
     slli t6, t6, 16
     srli t6, t6, 16          # t6 = target[15:0]
 
-    bne t3, t6, wrong_answer
-
-wait_btnr_release_ok:
-    lw t4, 0(s3)
-    addi s7, s7, 1
-    andi t5, t4, 2
-    bne t5, zero, wait_btnr_release_ok
-
-    addi s9, s9, 1
-    jal zero, game_next_value
+    beq t3, t6, answer_ok
 
 wrong_answer:
     # show "INV"
-    la a0, MSG_INV
-    add a1, s11, zero
+    la a0, MSG_INV_DW0
+    la a1, MSG_INV_DW1
+    jal ra, display_ascii_words
     la t0, DELAY_INV
-    lw a2, 0(t0)
-    jal ra, display_ascii_ltr
+    lw a0, 0(t0)
+    jal ra, delay_ticks
 
 wait_btnr_release_bad:
     lw t4, 0(s3)
@@ -143,196 +132,47 @@ wait_btnr_release_bad:
     jal ra, display_hex
     jal zero, wait_btnr_submit
 
+answer_ok:
+wait_btnr_release_ok:
+    lw t4, 0(s3)
+    addi s7, s7, 1
+    andi t5, t4, 2
+    bne t5, zero, wait_btnr_release_ok
+
+    addi s9, s9, 1
+    jal zero, game_next_value
+
 game_done:
     # show "CONGRATZ"
-    la a0, MSG_CONGRATZ
-    add a1, s11, zero
+    la a0, MSG_CONGRATZ_DW0
+    la a1, MSG_CONGRATZ_DW1
+    jal ra, display_ascii_words
     la t0, DELAY_DONE
-    lw a2, 0(t0)
-    jal ra, display_ascii_ltr
+    lw a0, 0(t0)
+    jal ra, delay_ticks
 
     # then show elapsed software cycles in HEX mode
     add a0, s7, zero
     jal ra, display_hex
 
+    # keep score visible for a while, then return to idle
+    la t0, DELAY_SCORE
+    lw a0, 0(t0)
+    jal ra, delay_ticks
+    jal zero, idle_wait_btnc
+
 halt:
     jal zero, halt
 
 
-# a0 = pointer to asciiz message
-display_ascii_static_z:
-    addi sp, sp, -20
-    sw ra, 16(sp)
-    sw s0, 12(sp)
-    sw s1, 8(sp)
-    sw s2, 4(sp)
-    sw s3, 0(sp)
-
-    add s0, a0, zero
-    add a0, s0, zero
-    jal ra, strlen8
-    add s1, a0, zero
-
-    add a0, s0, zero
-    add a1, s1, zero
-    addi a2, zero, 0
-    addi a3, zero, 8
-    jal ra, render_ascii_frame
-
-    lw s3, 0(sp)
-    lw s2, 4(sp)
-    lw s1, 8(sp)
-    lw s0, 12(sp)
-    lw ra, 16(sp)
-    addi sp, sp, 20
-    jalr zero, 0(ra)
-
-
-# a0 = pointer to asciiz message
-# a1 = per-frame delay ticks
-# a2 = hold delay ticks (after message is fully visible)
-display_ascii_ltr:
-    addi sp, sp, -24
-    sw ra, 20(sp)
-    sw s0, 16(sp)
-    sw s1, 12(sp)
-    sw s2, 8(sp)
-    sw s3, 4(sp)
-    sw s10, 0(sp)
-
-    add s0, a0, zero         # msg ptr
-    add s2, a1, zero         # frame delay
-    add s3, a2, zero         # hold delay
-
-    add a0, s0, zero
-    jal ra, strlen8
-    add s1, a0, zero         # len (0..8)
-
-    beq s1, zero, display_ascii_ltr_done
-
-    # Enter phase: reveal from left to right
-    addi s10, zero, 1
-display_ascii_ltr_enter_check:
-    slt t0, s1, s10          # if len < k, done entering
-    bne t0, zero, display_ascii_ltr_hold
-
-    add a0, s0, zero
-    add a1, s1, zero
-    addi a2, zero, 0
-    add a3, s10, zero
-    jal ra, render_ascii_frame
-
-    add a0, s2, zero
-    jal ra, delay_ticks
-
-    addi s10, s10, 1
-    jal zero, display_ascii_ltr_enter_check
-
-display_ascii_ltr_hold:
-    add a0, s0, zero
-    add a1, s1, zero
-    addi a2, zero, 0
-    add a3, s1, zero
-    jal ra, render_ascii_frame
-
-    add a0, s3, zero
-    jal ra, delay_ticks
-
-    # Exit phase: blank from left to right
-    addi s10, zero, 1
-display_ascii_ltr_exit_check:
-    slt t0, s1, s10          # if len < lb, done exiting
-    bne t0, zero, display_ascii_ltr_done
-
-    sub t1, s1, s10          # visible_count = len - left_blank
-    add a0, s0, zero
-    add a1, s1, zero
-    add a2, s10, zero
-    add a3, t1, zero
-    jal ra, render_ascii_frame
-
-    add a0, s2, zero
-    jal ra, delay_ticks
-
-    addi s10, s10, 1
-    jal zero, display_ascii_ltr_exit_check
-
-display_ascii_ltr_done:
-    lw s10, 0(sp)
-    lw s3, 4(sp)
-    lw s2, 8(sp)
-    lw s1, 12(sp)
-    lw s0, 16(sp)
-    lw ra, 20(sp)
-    addi sp, sp, 24
-    jalr zero, 0(ra)
-
-
-# a0 = pointer to asciiz string
-# returns a0 = length, capped at 8
-strlen8:
-    addi t0, zero, 0
-strlen8_loop:
-    add t1, a0, t0
-    lbu t2, 0(t1)
-    beq t2, zero, strlen8_done
-    addi t0, t0, 1
-    addi t3, zero, 8
-    beq t0, t3, strlen8_done
-    jal zero, strlen8_loop
-strlen8_done:
-    add a0, t0, zero
-    jalr zero, 0(ra)
-
-
-# a0 = msg ptr, a1 = len, a2 = start index in message, a3 = visible_count (from left)
-render_ascii_frame:
-    addi t0, zero, 0         # i
-    addi t1, zero, 0         # dw0
-    addi t2, zero, 0         # dw1
-
-render_ascii_frame_loop:
-    addi t3, zero, 8
-    beq t0, t3, render_ascii_frame_done
-
-    addi t4, zero, 32        # default char = ' '
-
-    # if i < visible_count, try to load message[start+i]
-    slt t5, t0, a3
-    beq t5, zero, render_ascii_pack
-
-    # j = start + i
-    add t6, t0, a2
-
-    # j < len ?
-    slt t5, t6, a1
-    beq t5, zero, render_ascii_pack
-
-    # load message char
-    add a4, a0, t6
-    lbu t4, 0(a4)
-
-render_ascii_pack:
-    slti t5, t0, 4
-    beq t5, zero, render_ascii_pack_dw1
-
-    slli t1, t1, 8
-    or t1, t1, t4
-    jal zero, render_ascii_next
-
-render_ascii_pack_dw1:
-    slli t2, t2, 8
-    or t2, t2, t4
-
-render_ascii_next:
-    addi t0, t0, 1
-    jal zero, render_ascii_frame_loop
-
-render_ascii_frame_done:
-    addi t3, zero, 1         # cfg bit0 = ascii mode
-    sw t3, 0(s4)
-    sw t1, 0(s5)
-    sw t2, 0(s6)
+# a0 = address of dw0, a1 = address of dw1
+display_ascii_words:
+    lw t0, 0(a0)
+    lw t1, 0(a1)
+    addi t2, zero, 1         # cfg bit0 = ascii mode
+    sw t2, 0(s4)
+    sw t0, 0(s5)
+    sw t1, 0(s6)
     jalr zero, 0(ra)
 
 
@@ -366,11 +206,11 @@ string1:
 .asciz "\r\nWelcome to CS2100DE..\r\n"
 
 # Delay constants (tune as needed on hardware)
-DELAY_MSG_FRAME: .word 70000
-DELAY_WELC:  .word 300000
-DELAY_START: .word 180000
-DELAY_INV:   .word 180000
-DELAY_DONE:  .word 300000
+DELAY_WELC:  .word 1500000
+DELAY_START: .word 900000
+DELAY_INV:   .word 300000
+DELAY_DONE:  .word 1500000
+DELAY_SCORE: .word 1500000
 
 # 5 game values (16-bit each in low halfword)
 TARGET_VALUES:
@@ -380,12 +220,21 @@ TARGET_VALUES:
 .word 0x00001357
 .word 0x0000C0DE
 
-# ASCII messages for SevenSegDecoderDual
-MSG_WELC:     .asciz "WELC"
-MSG_PSHC:     .asciz "PSH BTNC"
-MSG_START:    .asciz "START"
-MSG_INV:      .asciz "INV"
-MSG_CONGRATZ: .asciz "CONGRATZ"
+# ASCII messages for SevenSegDecoderDual (fixed 8-char words)
+MSG_WELC_DW0:     .word 0x57454C43   # WELC
+MSG_WELC_DW1:     .word 0x20202020   # "    "
+
+MSG_PSHC_DW0:     .word 0x50534820   # PSH
+MSG_PSHC_DW1:     .word 0x42544E43   # BTNC
+
+MSG_START_DW0:    .word 0x53544152   # STAR
+MSG_START_DW1:    .word 0x54202020   # T
+
+MSG_INV_DW0:      .word 0x494E5620   # INV
+MSG_INV_DW1:      .word 0x20202020   # "    "
+
+MSG_CONGRATZ_DW0: .word 0x434F4E47   # CONG
+MSG_CONGRATZ_DW1: .word 0x5241545A   # RATZ
 
 #------- <constant memory (ROM mapped to Data Memory) ends>
 

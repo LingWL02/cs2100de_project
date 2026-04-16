@@ -65,8 +65,9 @@ module Top_MMC_demo(
      logic [3:0] counter;
      assign clk_cpu = counter[3];
 
-     always @(posedge clk) begin
-         counter <= counter + 1;
+     always @(posedge clk)
+     begin
+            counter <= counter + 1;
      end
 
     // Initializing our instruction and data memories
@@ -83,7 +84,7 @@ module Top_MMC_demo(
 
     // Returning instruction words from the instruction memory. Memory reading is combinational.
     always_comb begin
-        if (PC >= 32'h0 && PC < 32'hFF) begin
+        if (PC >= 32'h0000 && PC < 32'h0400) begin
             instr <= instruction_rom[PC[10:2]];
         end
         else begin
