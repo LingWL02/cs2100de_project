@@ -31,7 +31,8 @@ module Top_MMC_demo(
     input [15:0] sw,
     output reg [15:0] led,
     output [6:0] seg,
-    output [7:0] an
+    output [7:0] an,
+    output dp
     );
 
     localparam LED_ADDRESS = 32'h2400;
@@ -143,7 +144,8 @@ module Top_MMC_demo(
         .data_word0(seven_seg_dw0),
         .data_word1(seven_seg_dw1),
         .seg(seg),
-        .an(an)
+        .an(an),
+        .dp(dp)
     );
 
     // Our CPU

@@ -26,7 +26,8 @@ module SevenSegDecoderDual(
   input  wire [31:0] data_word0,
   input  wire [31:0] data_word1,
   output logic [6:0] seg,
-  output logic [7:0] an
+  output logic [7:0] an,
+  output logic       dp
   );
 
   localparam integer CFG_ASCII_MODE_BIT = 0;
@@ -63,6 +64,7 @@ module SevenSegDecoderDual(
   function automatic [6:0] ascii_to_seg_fn(input [7:0] ch);
     case (ch)
       8'h20: ascii_to_seg_fn = 7'b1111111; // space
+      8'h2E: ascii_to_seg_fn = 7'b1111111; // . (use DP output only)
       8'h2D: ascii_to_seg_fn = 7'b0111111; // -
       8'h30: ascii_to_seg_fn = 7'b1000000; // 0
       8'h31: ascii_to_seg_fn = 7'b1111001; // 1
@@ -170,6 +172,8 @@ module SevenSegDecoderDual(
     endcase
 
     seg = ascii_mode ? ascii_to_seg_fn(ascii_to_display) : hex_to_seg(nibble_to_display);
+    // DP is only used for ASCII full stop; keep it off in hex mode.
+    dp = (ascii_mode && (ascii_to_display == 8'h2E)) ? 1'b0 : 1'b1;
   end
 
 endmodule

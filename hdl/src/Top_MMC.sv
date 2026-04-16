@@ -31,7 +31,8 @@ module Top_MMC(
     input [15:0] sw,
     output reg [15:0] led,
     output [6:0] seg,
-    output [7:0] an
+    output [7:0] an,
+    output       dp
     );
 
     localparam LED_ADDRESS = 32'h2400;
@@ -114,6 +115,8 @@ module Top_MMC(
             end
         end
     end
+
+    assign dp = 1'b1; // Keep the decimal point off for now
 
     // Similar architecture to the one designed in Lab 2/3
     SevenSegDecoder ss_decoder (
