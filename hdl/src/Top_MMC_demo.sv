@@ -71,8 +71,8 @@ module Top_MMC_demo(
 
     // Initializing our instruction and data memories
     initial begin
-        $readmemh("AA_IROM.mem", instruction_rom);
-        $readmemh("AA_DMEM.mem", data_memory);
+        $readmemh("demo_text.mem", instruction_rom);
+        $readmemh("demo_data.mem", data_memory);
 
         counter <= 0;
         led <= 0;
