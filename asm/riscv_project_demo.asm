@@ -2,7 +2,9 @@
 .eqv LED_OFF 0x00000000
 .eqv DIP_OFF 0x00000004
 .eqv PB_OFF 0x00000008
-.eqv SEVENSEG_OFF 0x00000018
+.eqv SEVENSEG_CFG_OFF 0x00000018
+.eqv SEVENSEG_DW0_OFF 0x0000001C
+.eqv SEVENSEG_DW1_OFF 0x00000020
 
 # This sample program for RISC-V simulation using RARS
 
@@ -55,4 +57,6 @@ PBS: .word 0x0			# 0x00002408	# Address of Push Buttons. Used only in Lab 2
 CONSOLE: .word 0x0		# 0x0000240C	# Address of UART. Used only in Lab 2 and later
 CONSOLE_IN_valid: .word 0x0	# 0x00002410	# Address of UART. Used only in Lab 2 and later
 CONSOLE_OUT_ready: .word 0x0	# 0x00002414	# Address of UART. Used only in Lab 2 and later
-SEVENSEG: .word	0x0		# 0x00002418	# Address of 7-Segment LEDs. Used only in Lab 2 and later
+SEVENSEG_CFG: .word	0x0		# 0x00002418	# Address of 7-Segment LEDs. Used only in Lab 2 and later
+SEVENSEG_DW0: .word	0x0
+SEVENSEG_DW1: .word	0x0
