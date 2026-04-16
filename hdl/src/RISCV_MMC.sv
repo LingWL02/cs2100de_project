@@ -116,7 +116,7 @@ module RISCV_MMC(
             if (decoder_alu_src_a[1])
                 alu_src_a = pc;
             else
-                alu_src_a = '0
+                alu_src_a = '0;
         end
         else
             alu_src_a = reg_file_RD1;
@@ -153,8 +153,8 @@ module RISCV_MMC(
     // Program Counter signals
     assign pc_clk = clk;
     assign pc_rst = rst;
-    assign pc_src_a = decoder_PCS[0] ? extend_ext_imm : 32'h4;
-    assign pc_src_b = decoder_PCS[1] ? reg_file_RD1 : pc;
+    assign pc_src_a = pc_logic_PC_src[0] ? extend_ext_imm : 32'h4;
+    assign pc_src_b = pc_logic_PC_src[1] ? reg_file_RD1 : pc;
     assign pc_in = pc_src_a + pc_src_b;
 
 	// Instantiate your extender module here
